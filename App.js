@@ -15,25 +15,40 @@ export default function App() {
 
   //skal bruge location nu. Vi skal lave reference til MapView objektet i vores return, bruger useRef
 
-  const mapView = useRef(null) //holder reference på tværs af renderings. 
+  const mapView = useRef<MapView>(null) //holder reference på tværs af renderings. 
   //useState forårsager nu rendering hvis dens værdi/variabel ændres, det gør useRef ikke
   //vi bruger useRef fordi den ikke ændres eller forsvinder eller forårsager renderings
   const locationSubscription = useRef(null) //bruges til at den skal stoppe med at lytte når vi lukker appen
   //locationSubscription er en liestener som skal slukkes når appen lukkes
 
   useEffect(() => { //skal lytte på hvor man er, gøres i baggrunden
-    async function startListener(){
+    async function startListening() {
       let { status } = await Location.requestBackgroundPermissionsAsync() //requestB... returnere et objekt, her vil vi kun have status property, destructuring assignment
-      if (status !== 'granted'){
+      if (status !== 'granted') {
         alert("Access to location was not granted")
         return //gøres for at afslutte funktionen hvis ingen access
       }
       //hvis man har sagt ja tak til at dele lokation:
       locationSubscription.current = await Location.watchPositionAsync({ //denne kan overskrives, men ikke const locationSubscription = useRef(null), den er konstant
-        
-
-      })    //denne kan overskrives, men ikke const locationSubscription = useRef(null), den er konstant
+        distanceInterval: 100,  //hvor mange meter der gør før den opdaterer
+        accuracy: Location.Accuracy.High, //skal være på ellers vil Android telefoner ikke vise hvor man er i verden 
+      }, (location) => {
+        //hvad skal der ske ved ændret lokation: watchPositionAsync tager to objekter
+        const newRegion = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          latitudeDelta: 20,
+          longitudeDelta: 20
+        }
+        //setter region, så vi placerer kortet der hvor man er henne i verden
+        setRegion(newRegion)
+        //bare fordi region settes flyttes mappet ikke. Her gøres at mappet grafisk flytter sig:
+        if (mapView.current){
+          mapView.current.animateToRegion(newRegion)
+        }
+      })
     }
+    startListening()
   })
 
   function addMarker(data) {
@@ -50,7 +65,7 @@ export default function App() {
 
   }
 
-  function onMarkerPressed(text){
+  function onMarkerPressed(text) {
     alert("you pressed " + text) //alert kan ikke bruge komma, er ikke variadic function
   }
 
@@ -60,20 +75,20 @@ export default function App() {
         style={styles.map}
         region={region}
         onLongPress={addMarker} //MapView er en component som er et objekt som har properties, 
-        //et af dem er onLongPress, er intrinisci til MapView her, addMarker er en funktion som gives 
-        //som value til key/navn på prop'en som er onLongPress. Dette gøres når funktionen skal kaldes
-        //senere. Så nu er funktionen gemt i MapView objekt og kan kaldes når som helst. Det er ikke som html onClick hvor funktionen rent faktisk kaldes dér
-        //MapView har eventListeners for properties som man kan interagere med dem, som onLongPress
-        //eventHandlers er de her funktioner vi selv laver såsom addMarker
-      > 
+      //et af dem er onLongPress, er intrinisci til MapView her, addMarker er en funktion som gives 
+      //som value til key/navn på prop'en som er onLongPress. Dette gøres når funktionen skal kaldes
+      //senere. Så nu er funktionen gemt i MapView objekt og kan kaldes når som helst. Det er ikke som html onClick hvor funktionen rent faktisk kaldes dér
+      //MapView har eventListeners for properties som man kan interagere med dem, som onLongPress
+      //eventHandlers er de her funktioner vi selv laver såsom addMarker
+      >
         {markers.map(marker => (  //vis marker
           <Marker
             coordinate={marker.coordinate}
             key={marker.key}
             title={marker.title}
             onPress={() => onMarkerPressed(marker.title)} //viste intet først, var fordi jeg longPressede, skal være kort klik
-            //inPress har eventlistener også, som venter på tryk
-            //vores arrow funktion er event handler, som sker når tryk aktivere eventListener. Arrow funktionen er nu vaue til onPress key/property
+          //inPress har eventlistener også, som venter på tryk
+          //vores arrow funktion er event handler, som sker når tryk aktivere eventListener. Arrow funktionen er nu vaue til onPress key/property
           />
         ))
         }
